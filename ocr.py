@@ -1,39 +1,38 @@
+# ocr_module.py
 import os
-
 from doctr.io import DocumentFile
 from doctr.models import ocr_predictor
 
-model = ocr_predictor(pretrained=True)
+class OCRModule:
+    def __init__(self):
+        self.model = ocr_predictor(pretrained=True)
 
+    def process_document(self, file_path, file_name):
+        try:
+            if file_name.lower().endswith(".pdf"):
+                document = DocumentFile.from_pdf(file_path)
+            else:
+                document = DocumentFile.from_images(file_path)
 
-def OCR_function(file_path, file_name):
-    is_pdf = False
-    try:
-        if (file_name[-3:] == "pdf"):
-            document = DocumentFile.from_pdf(file_path)
-            is_pdf = True
-        else:
-            document = DocumentFile.from_images(file_path)
-        result = model(document)
-        json_response = result.export()
+            result = self.model(document)
+            json_response = result.export()
+            output_file_path = 'output.txt'
 
-        # output_file_path = os.path.join(file_name + '_output.txt')
-        output_file_path = os.path.join('output.txt')
+            self._write_output_file(json_response, output_file_path)
+            return json_response, output_file_path
 
-        pages = json_response['pages']
+        except Exception as e:
+            error_log = f"Error processing {file_name}: {str(e)}"
+            print(error_log)
+            raise e
+
+    def _write_output_file(self, json_response, output_file_path):
         with open(output_file_path, "w") as text_file:
-            for p in pages:
-                for i in p['blocks']:
-                    for j in i['lines']:
-                        for k in j['words']:
-                            text_file.write(k['value']+" ")
+            for page in json_response['pages']:
+                for block in page['blocks']:
+                    for line in block['lines']:
+                        for word in line['words']:
+                            text_file.write(word['value'] + " ")
                         text_file.write("\n")
                     text_file.write("\n")
                 text_file.write("\n")
-        
-        return json_response, output_file_path
-
-    except Exception as e:
-        error_log = f"Error processing {file_name}: {str(e)}"
-        print(error_log)
-        raise e

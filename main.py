@@ -1,8 +1,9 @@
+# main.py
 import uvicorn
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from tempfile import NamedTemporaryFile
-from ocr import OCR_function
+from ocr import OCRModule
 
 app = FastAPI(
     title="doctr api",
@@ -24,15 +25,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+ocr_module = OCRModule()
 
 @app.get('/notify/v1/health')
 def get_health():
-    return dict(msg='OK')
-
+    return {"msg": "OK"}
 
 @app.post("/ocr")
 async def doctr_ocr(file: UploadFile = File(...)):
-
     with NamedTemporaryFile(delete=False) as temp_file:
         temp_file.write(file.file.read())
         temp_file.seek(0)
@@ -41,19 +41,19 @@ async def doctr_ocr(file: UploadFile = File(...)):
         file_path = temp_file.name
 
     try:
-        response, output_filepath = OCR_function(file_path,file_name)
-        with open(output_filepath, 'r') as file:
-            file_content = file.read()
-        
-        return{
+        response, output_filepath = ocr_module.process_document(file_path, file_name)
+        with open(output_filepath, 'r') as file_content:
+            text_response = file_content.read()
+
+        return {
             "json_response": response,
-            "text_response": file_content
+            "text_response": text_response
         }
-    except:
-        return{
-            "error":"something went wrong"
+    except Exception as e:
+        return {
+            "error": "Something went wrong",
+            "error_detail": str(e)
         }
 
-
-if __name__=='__main__':
-    uvicorn.run('main:app',host='0.0.0.0',port=8000,log_level="info")
+if __name__ == '__main__':
+    uvicorn.run('main:app', host='0.0.0.0', port=8000, log_level="info")
