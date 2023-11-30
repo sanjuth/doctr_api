@@ -1,9 +1,10 @@
-# main.py
 import uvicorn
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from tempfile import NamedTemporaryFile
+
 from ocr import OCRModule
+from qr import QRProcessor  # Assuming you have a QR module with the QRProcessor class
 
 app = FastAPI(
     title="doctr api",
@@ -26,6 +27,7 @@ app.add_middleware(
 )
 
 ocr_module = OCRModule()
+qr_processor = QRProcessor()
 
 @app.get('/notify/v1/health')
 def get_health():
@@ -41,13 +43,18 @@ async def doctr_ocr(file: UploadFile = File(...)):
         file_path = temp_file.name
 
     try:
-        response, output_filepath = ocr_module.process_document(file_path, file_name)
+        # OCR Processing
+        ocr_response, output_filepath = ocr_module.process_document(file_path, file_name)
         with open(output_filepath, 'r') as file_content:
             text_response = file_content.read()
 
+        # QR Code Processing
+        qr_response = qr_processor.process_file(file_path, file_name)
+
         return {
-            "json_response": response,
-            "text_response": text_response
+            "ocr_response": ocr_response,
+            "text_response": text_response,
+            "qr_response": qr_response
         }
     except Exception as e:
         return {
